@@ -200,6 +200,4 @@ describe('noteful method tests', function(){
         })
     })
 
-
-
 })
