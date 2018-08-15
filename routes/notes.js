@@ -2,7 +2,6 @@
 
 const express = require('express');
 const mongoose = require('mongoose');
-const { MONGODB_URI } = require('../config');
 
 const Note = require('../models/note');
 
@@ -10,126 +9,126 @@ const router = express.Router();
 
 /* ========== GET/READ ALL ITEMS ========== */
 router.get('/', (req, res, next) => {
+  const { searchTerm } = req.query;
 
-  mongoose.connect(MONGODB_URI)
-  .then(() => {
-      const { searchTerm } = req.query
-    if(searchTerm){
-      return Note.find()
-      .or([{title:{$regex: searchTerm, $options: 'i'}},{content:{$regex: searchTerm, $options: 'i'}}])
+  let filter = {};
+
+  if (searchTerm) {
+    filter.title = { $regex: searchTerm, $options: 'i' };
+
+    // Mini-Challenge: Search both `title` and `content`
+    // const re = new RegExp(searchTerm, 'i');
+    // filter.$or = [{ 'title': re }, { 'content': re }];
   }
-  return Note.find()
-})
-    
-  .then(results => {
+
+  Note.find(filter)
+    .sort({ updatedAt: 'desc' })
+    .then(results => {
       res.json(results);
-  })
-  .then(() => {
-      return mongoose.disconnect()
-  })
-  .catch(err => {
-      console.error(`ERROR: ${err.message}`);
+    })
+    .catch(err => {
       next(err);
-  });
-  
+    });
 });
 
 /* ========== GET/READ A SINGLE ITEM ========== */
 router.get('/:id', (req, res, next) => {
-  mongoose.connect(MONGODB_URI)
-    .then(()=>{
-        const id = req.params.id
+  const { id } = req.params;
 
-        return Note.findById(id)
-    })
-    .then(result =>{
-        res.json(result)
-    })
-    .then(() => {
-        return mongoose.disconnect()
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    const err = new Error('The `id` is not valid');
+    err.status = 400;
+    return next(err);
+  }
+
+  Note.findById(id)
+    .then(result => {
+      if (result) {
+        res.json(result);
+      } else {
+        next();
+      }
     })
     .catch(err => {
-    console.error(`ERROR: ${err.message}`);
-    next(err);
-    })
+      next(err);
+    });
 });
 
 /* ========== POST/CREATE AN ITEM ========== */
 router.post('/', (req, res, next) => {
+  const { title, content } = req.body;
 
+  /***** Never trust users - validate input *****/
+  if (!title) {
+    const err = new Error('Missing `title` in request body');
+    err.status = 400;
+    return next(err);
+  }
 
-  mongoose.connect(MONGODB_URI)
-  .then(()=>{
-      const {title, content} = req.body
+  const newNote = { title, content };
 
-      const newItem = {
-        title: title,
-        content: content
-      }
-
-      return Note.create(newItem)
-  })
-  .then(result =>{
-      res.location(req.originalUrl/req.id).status(201).json(result)
-  })
-  .then(()=>{
-      return mongoose.disconnect()
-  })
-.catch(err => {
-console.error(`ERROR: ${err.message}`);
-console.error(err);
-});
-
+  Note.create(newNote)
+    .then(result => {
+      res.location(`${req.originalUrl}/${result.id}`)
+        .status(201)
+        .json(result);
+    })
+    .catch(err => {
+      next(err);
+    });
 });
 
 /* ========== PUT/UPDATE A SINGLE ITEM ========== */
 router.put('/:id', (req, res, next) => {
+  const { id } = req.params;
+  const { title, content } = req.body;
 
-  mongoose.connect(MONGODB_URI)
-  .then(()=>{
-  const id =req.params.id
+  /***** Never trust users - validate input *****/
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    const err = new Error('The `id` is not valid');
+    err.status = 400;
+    return next(err);
+  }
 
-  const {title, content} =req.body
-  const updateObj = {title:title, content:content}
+  if (!title) {
+    const err = new Error('Missing `title` in request body');
+    err.status = 400;
+    return next(err);
+  }
 
-      return Note.findByIdAndUpdate(id,updateObj,{new: true})
-  })
-  .then(result =>{
-    if(result){
-      res.json(result)
-    }
-    else{
-      next()
-    }
-  })   
-  .then(()=>{
-      return mongoose.disconnect()
-  })
-.catch(err => {
-console.error(`ERROR: ${err.message}`);
-next(err);
-});
+  const updateNote = { title, content };
+
+  Note.findByIdAndUpdate(id, updateNote, { new: true })
+    .then(result => {
+      if (result) {
+        res.json(result);
+      } else {
+        next();
+      }
+    })
+    .catch(err => {
+      next(err);
+    });
 });
 
 /* ========== DELETE/REMOVE A SINGLE ITEM ========== */
 router.delete('/:id', (req, res, next) => {
+  const { id } = req.params;
 
-  mongoose.connect(MONGODB_URI)
-  .then(()=>{
-      const id = req.params.id
+  /***** Never trust users - validate input *****/
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    const err = new Error('The `id` is not valid');
+    err.status = 400;
+    return next(err);
+  }
 
-      return Note.findByIdAndRemove(id)
-  })
-      .then(() =>{
-        res.sendStatus(204)
-  })   
-  .then(()=>{
-      return mongoose.disconnect()
-  })
-.catch(err => {
-  console.error(`ERROR: ${err.message}`);
-  next(err);
-});
+  Note.findByIdAndRemove(id)
+    .then(() => {
+      res.status(204).end();
+    })
+    .catch(err => {
+      next(err);
+    });
 });
 
 module.exports = router;
