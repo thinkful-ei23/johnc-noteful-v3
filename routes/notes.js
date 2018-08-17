@@ -9,21 +9,22 @@ const router = express.Router();
 
 /* ========== GET/READ ALL ITEMS ========== */
 router.get('/', (req, res, next) => {
-  const { searchTerm, folderId,tagId } = req.query;
+  const { searchTerm, folderId,tags } = req.query;
 
   let filter = {};
 
   if (searchTerm) {
-    // filter.title = { $regex: searchTerm, $options: 'i' };
-
+    
     const re = new RegExp(searchTerm, 'i');
     filter.$or = [{ 'title': re }, { 'content': re }];
   }
-  if(folderId){
-    filter.folderId = folderId
+
+  if (folderId) {
+    filter.folderId = folderId;
   }
-  if(tagId){
-    filter.tags = tagId
+
+  if(tags){
+    filter.tags=tags
   }
 
   Note.find(filter)
@@ -63,7 +64,7 @@ router.get('/:id', (req, res, next) => {
 
 /* ========== POST/CREATE AN ITEM ========== */
 router.post('/', (req, res, next) => {
-  const { title, content,folderId,tags } = req.body;
+  const { title, content, folderId,tags } = req.body;
 
   /***** Never trust users - validate input *****/
   if (!title) {
@@ -78,11 +79,12 @@ router.post('/', (req, res, next) => {
     return next(err);
   }
   if(tags && !mongoose.Types.ObjectId.isValid(tags)){
-      const err = new Error('the `tag` is not valid')
-      err.status = 400
-      return next(err)
-    }
-  const newNote = { title, content,folderId,tags };
+    const err = new Error('the `tag` is not valid')
+    err.status = 400
+    return next(err)
+  }
+
+  const newNote = { title, content, folderId,tags };
 
   Note.create(newNote)
     .then(result => {
@@ -98,7 +100,7 @@ router.post('/', (req, res, next) => {
 /* ========== PUT/UPDATE A SINGLE ITEM ========== */
 router.put('/:id', (req, res, next) => {
   const { id } = req.params;
-  const { title, content,folderId,tags } = req.body;
+  const { title, content, folderId,tags } = req.body;
 
   /***** Never trust users - validate input *****/
   if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -119,12 +121,13 @@ router.put('/:id', (req, res, next) => {
     return next(err);
   }
   if(tags && !mongoose.Types.ObjectId.isValid(tags)){
-      const err = new Error('the `tag` is not valid')
-      err.status = 400
-      return next(err)
-    }
+    const err = new Error('the `tag` is not valid')
+    err.status = 400
+    return next(err)
+  }
 
-  const updateNote = { title, content,folderId,tags };
+
+  const updateNote = { title, content, folderId,tags };
 
   Note.findByIdAndUpdate(id, updateNote, { new: true })
     .then(result => {
