@@ -64,7 +64,7 @@ router.get('/:id', (req, res, next) => {
 
 /* ========== POST/CREATE AN ITEM ========== */
 router.post('/', (req, res, next) => {
-  const { title, content, folderId,tags } = req.body;
+  const { title, content, folderId, tags } = req.body;
 
   /***** Never trust users - validate input *****/
   if (!title) {
@@ -78,7 +78,9 @@ router.post('/', (req, res, next) => {
     err.status = 400;
     return next(err);
   }
-  if (tags && !mongoose.Types.ObjectId.isValid(tags)) {
+
+  if (tags && !tags.every(tag => mongoose.Types.ObjectId.isValid(tag))){
+  
     const err = new Error(`The tags '${tags}' is not valid`);
     err.status = 400;
     return next(err);
@@ -120,8 +122,9 @@ router.put('/:id', (req, res, next) => {
     err.status = 400;
     return next(err);
   }
-  if (tags & !mongoose.Types.ObjectId.isValid(tags)) {
-    const err = new Error('The `tag id` is not valid');
+  if (tags && !tags.every(tag => mongoose.Types.ObjectId.isValid(tag))){
+  
+    const err = new Error(`The tags '${tags}' is not valid`);
     err.status = 400;
     return next(err);
   }
