@@ -71,21 +71,17 @@ router.post('/', (req, res, next) => {
     err.status = 400;
     return next(err);
   }
-  if(folderId){
-    if(!mongoose.Types.ObjectId.isValid(folderId)){
-      const err = new Error('the `folderId` is not valid')
-      err.status = 400
-      return next(err)
-    }
+
+  if (folderId && !mongoose.Types.ObjectId.isValid(folderId)) {
+    const err = new Error('The `folderId` is not valid');
+    err.status = 400;
+    return next(err);
   }
-  if(tags){
-    if(!mongoose.Types.ObjectId.isValid(tags)){
+  if(tags && !mongoose.Types.ObjectId.isValid(tags)){
       const err = new Error('the `tag` is not valid')
       err.status = 400
       return next(err)
     }
-  }
-
   const newNote = { title, content,folderId,tags };
 
   Note.create(newNote)
@@ -111,25 +107,22 @@ router.put('/:id', (req, res, next) => {
     return next(err);
   }
 
-  if(folderId){
-    if(!mongoose.Types.ObjectId.isValid(folderId)){
-      const err = new Error('the `folderId` is not valid')
-      err.status = 400
-      return next(err)
-    }
-  }
-  if(tags){
-    if(!mongoose.Types.ObjectId.isValid(tags)){
-      const err = new Error('the `tag` is not valid')
-      err.status = 400
-      return next(err)
-    }
-  }
   if (!title) {
     const err = new Error('Missing `title` in request body');
     err.status = 400;
     return next(err);
   }
+
+  if (folderId && !mongoose.Types.ObjectId.isValid(folderId)) {
+    const err = new Error('The `folderId` is not valid');
+    err.status = 400;
+    return next(err);
+  }
+  if(tags && !mongoose.Types.ObjectId.isValid(tags)){
+      const err = new Error('the `tag` is not valid')
+      err.status = 400
+      return next(err)
+    }
 
   const updateNote = { title, content,folderId,tags };
 
