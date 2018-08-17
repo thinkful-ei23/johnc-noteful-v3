@@ -78,8 +78,8 @@ router.post('/', (req, res, next) => {
     err.status = 400;
     return next(err);
   }
-  if (tags & !mongoose.Types.ObjectId.isValid(tags)) {
-    const err = new Error('The `tag id` is not valid');
+  if (tags && !mongoose.Types.ObjectId.isValid(tags)) {
+    const err = new Error(`The tags '${tags}' is not valid`);
     err.status = 400;
     return next(err);
   }
