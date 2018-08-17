@@ -9,7 +9,7 @@ const router = express.Router();
 
 /* ========== GET/READ ALL ITEMS ========== */
 router.get('/', (req, res, next) => {
-  const { searchTerm, folderId,tags } = req.query;
+  const { searchTerm, folderId,tagId } = req.query;
 
   let filter = {};
 
@@ -24,7 +24,7 @@ router.get('/', (req, res, next) => {
   }
 
   if(tags){
-    filter.tags=tags
+    filter.tags=tagId
   }
 
   Note.find(filter)
