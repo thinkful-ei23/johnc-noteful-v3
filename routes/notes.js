@@ -9,16 +9,18 @@ const router = express.Router();
 
 /* ========== GET/READ ALL ITEMS ========== */
 router.get('/', (req, res, next) => {
-  const { searchTerm } = req.query;
+  const { searchTerm, folderId } = req.query;
 
   let filter = {};
 
   if (searchTerm) {
-    filter.title = { $regex: searchTerm, $options: 'i' };
+    // filter.title = { $regex: searchTerm, $options: 'i' };
 
-    // Mini-Challenge: Search both `title` and `content`
-    // const re = new RegExp(searchTerm, 'i');
-    // filter.$or = [{ 'title': re }, { 'content': re }];
+    const re = new RegExp(searchTerm, 'i');
+    filter.$or = [{ 'title': re }, { 'content': re }];
+  }
+  if(folderId){
+    filter.folderId = folderId
   }
 
   Note.find(filter)
@@ -56,13 +58,20 @@ router.get('/:id', (req, res, next) => {
 
 /* ========== POST/CREATE AN ITEM ========== */
 router.post('/', (req, res, next) => {
-  const { title, content } = req.body;
+  const { title, content,folderId } = req.body;
 
   /***** Never trust users - validate input *****/
   if (!title) {
     const err = new Error('Missing `title` in request body');
     err.status = 400;
     return next(err);
+  }
+  if(folderId){
+    if(!mongoose.Types.ObjectId.isValid(folderId)){
+      const err = new Error('the `folderId` is not valid')
+      err.status = 400
+      return next(err)
+    }
   }
 
   const newNote = { title, content };
@@ -81,7 +90,7 @@ router.post('/', (req, res, next) => {
 /* ========== PUT/UPDATE A SINGLE ITEM ========== */
 router.put('/:id', (req, res, next) => {
   const { id } = req.params;
-  const { title, content } = req.body;
+  const { title, content,folderId } = req.body;
 
   /***** Never trust users - validate input *****/
   if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -90,6 +99,13 @@ router.put('/:id', (req, res, next) => {
     return next(err);
   }
 
+  if(folderId){
+    if(!mongoose.Types.ObjectId.isValid(folderId)){
+      const err = new Error('the `folderId` is not valid')
+      err.status = 400
+      return next(err)
+    }
+  }
   if (!title) {
     const err = new Error('Missing `title` in request body');
     err.status = 400;

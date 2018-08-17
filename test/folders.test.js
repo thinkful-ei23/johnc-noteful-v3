@@ -5,16 +5,14 @@ const mongoose = require('mongoose');
 const app = require('../server');
 const { TEST_MONGODB_URI } = require('../config');
 
-const Note = require('../models/note');
-const seedNotes = require('../db/seed/notes');
-
 const Folder = require('../models/folder');
-const seedFolders = require('../db/seed/folders')
+
+const seedFolders = require('../db/seed/folders');
 
 const expect = chai.expect;
 chai.use(chaiHttp);
 
-describe('noteful notes method tests', function(){
+describe('noteful folder method tests', function(){
 
     before(function () {
         return mongoose.connect(TEST_MONGODB_URI)
@@ -23,12 +21,11 @@ describe('noteful notes method tests', function(){
     
     beforeEach(function () {
         return Promise.all([
-            Note.insertMany(seedNotes),
             Folder.insertMany(seedFolders),
             Folder.createIndexes()
-
         ]);
     });
+    
     afterEach(function () {
         return mongoose.connection.db.dropDatabase();
     });
@@ -38,60 +35,59 @@ describe('noteful notes method tests', function(){
     });
 
 
-    describe('GET /api/notes', function(){
-        it('should return all notes', function(){
+    describe('GET /api/folders', function(){
+        it('should return all folders', function(){
 
             let res;
             return chai.request(app)
-                .get('/api/notes')
+                .get('/api/folders')
                 .then(_res =>{
                     res = _res
                     expect(res).to.be.json;
                     expect(res).to.have.status(200);
                     expect(res.body).to.be.a('array');
                     expect(res.body).to.have.lengthOf.at.least(1);
-                return Note.find().count()
+                return Folder.find().count()
                 })
-            .then(notes =>{
-                expect(res.body.length).to.be.equal(notes)
+            .then(folders =>{
+                expect(res.body.length).to.be.equal(folders)
             })
         });
-        it('should not return notes', function(){
+        it('should not return folders', function(){
             return chai.request(app)
-                .get('/api/silly/notes')
+                .get('/api/silly/folders')
                 .then(res =>{
                     expect(res).to.have.status(404);
                 })
         })
     });
 
-    describe('GET /api/notes/:id', function(){
-        it('should return a specific note',function(){
+    describe('GET /api/folders/:id', function(){
+        it('should return a specific folder',function(){
 
             let data;
-            return Note.findOne()
+            return Folder.findOne()
                 .then(_data => {
                     data = _data;
 
-            return chai.request(app).get(`/api/notes/${data.id}`)
+            return chai.request(app).get(`/api/folders/${data.id}`)
                 })
             .then(res =>{
                 expect(res).to.be.json
                 expect(res.body).to.be.a('object')
                 expect(res).to.have.status(200)
 
-                expect(res.body.title).to.equal(data.title)
-                expect(res.body.content).to.equal(data.content)
+                expect(res.body.name).to.equal(data.name)
             })
         })
-        it('should not return a note',function(){
+        it('should not return a folder',function(){
 
             let data;
-            return Note.findOne()
+            return Folder.findOne()
                 .then(_data =>{
                     data = _data;
 
-                    return chai.request(app).get(`/api/notes${data.id}`)
+                    return chai.request(app).get(`/api/folders${data.id}`)
                 })
                 .then(res =>{
                     expect(res).to.have.status(404)
@@ -100,29 +96,28 @@ describe('noteful notes method tests', function(){
         })
     });
 
-    describe('POST /api/notes',function(){
-        it('should create a new note',function(){
-            const newItem ={title:'having fun in the sun',content:'just kidding'}
+    describe('POST /api/folders',function(){
+        it('should create a new folder',function(){
+            const newItem ={name: 'Super Awesome Name'}
 
             return chai.request(app)
-            .post('/api/notes')
+            .post('/api/folders')
             .send(newItem)
             .then(res =>{
                 expect(res).to.be.json;
                 expect(res).to.be.a('object')
 
-            return Note.findById(res.body.id)
+            return Folder.findById(res.body.id)
         })
             .then(data =>{
-                expect(data.title).to.be.equal(newItem.title)
-                expect(data.content).to.be.equal(newItem.content)
+                expect(data.name).to.be.equal(newItem.name)
             })
         })
-        it('should not create a new note',function(){
+        it('should not create a new folder',function(){
 
-            const newItem2 = {content:'uhoh'}
+            const newItem2 = {name:null}
             return chai.request(app)
-                .post('/api/notes')
+                .post('/api/folders')
                 .send(newItem2)
                 .then(res =>{
                     expect(res).to.have.status(400)
@@ -131,37 +126,36 @@ describe('noteful notes method tests', function(){
     });
 
 
-    describe('PUT /api/notes/:id',function(){
-        it('should update a note by id',function(){
-            const updateItem = {title:'newTitle',content:'wolulu'}
+    describe('PUT /api/folders/:id',function(){
+        it('should update a folder by id',function(){
+            const updateItem = {name:'wolulu'}
 
             let data;
-            return Note.findOne()
+            return Folder.findOne()
                 .then(_data => {
                     data = _data;
-                return chai.request(app).put(`/api/notes/${data.id}`)
+                return chai.request(app).put(`/api/folders/${data.id}`)
                 .send(updateItem)
                 })
                 .then(res =>{
                     expect(res).to.be.a('object')
                     expect(res).to.be.json
 
-                return Note.findById(data.id)
+                return Folder.findById(data.id)
                 })
                 .then(result =>{
                     expect(result.id).to.be.equal(data.id)
-                    expect(result.title).to.be.equal(updateItem.title)
-                    expect(result.content).to.be.equal(updateItem.content)
+                    expect(result.name).to.be.equal(updateItem.name)
                 })
         })
-        it('should not update the note',function(){
-            const UpdateItem2 = {title:null, content: 'wolulu'}
+        it('should not update the folder',function(){
+            const UpdateItem2 = {name:null}
 
             let data;
-            return Note.findOne()
+            return Folder.findOne()
                 .then(_data => {
                     data = _data;
-                return chai.request(app).put(`/api/notes/${data.id}`)
+                return chai.request(app).put(`/api/folders/${data.id}`)
                 .send(UpdateItem2)
                 })
                 .then(res =>{
@@ -170,38 +164,37 @@ describe('noteful notes method tests', function(){
         })
     })
 
-    describe('DELETE /api/notes/:id',function(){
-        it('should delete a note by id', function(){
+    describe('DELETE /api/folders/:id',function(){
+        it('should delete a folder by id', function(){
             let data;
-            return Note.findOne()
+            return Folder.findOne()
                 .then(_data => {
                     data = _data;
 
-            return chai.request(app).delete(`/api/notes/${data.id}`)
+            return chai.request(app).delete(`/api/folders/${data.id}`)
                 })
             .then(res =>{
                 expect(res).to.have.status(204)
-            return Note.findById(data.id)
+            return Folder.findById(data.id)
             })
-            .then(dbNote =>{
-                expect(dbNote).to.be.null
+            .then(dbFolder =>{
+                expect(dbFolder).to.be.null
             })
         })
-        it('should not delete a note',function(){
+        it('should not delete a Folder',function(){
             let data;
-            return Note.findOne()
+            return Folder.findOne()
                 .then(_data => {
                     data = _data;
 
-            return chai.request(app).delete(`/api/notes${data.id}`)
+            return chai.request(app).delete(`/api/folders${data.id}`)
                 })
             .then(res=>{
                 expect(res).to.have.status(404)
-                return Note.findById(data.id)
+                return Folder.findById(data.id)
             })
-            .then(dbNote=>{
-                expect(dbNote.title).to.be.equal(data.title)
-                expect(dbNote.content).to.be.equal(data.content)
+            .then(dbFolder=>{
+                expect(dbFolder.name).to.be.equal(data.name)
             })
         })
     })
