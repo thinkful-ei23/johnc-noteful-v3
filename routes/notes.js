@@ -23,8 +23,8 @@ router.get('/', (req, res, next) => {
     filter.folderId = folderId;
   }
 
-  if(tags){
-    filter.tags=tagId
+  if(tagId){
+    filter.tags= tagId
   }
 
   Note.find(filter)
