@@ -4,7 +4,8 @@ const express = require('express');
 const mongoose = require('mongoose');
 
 const Tag = require('../models/tags');
-const Note = require('../models/note')
+const Note = require('../models/note');
+const passport =require('passport');
 
 const router = express.Router();
 

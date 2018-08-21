@@ -4,8 +4,11 @@ const express = require('express');
 const mongoose = require('mongoose');
 
 const Note = require('../models/note');
+const passport = require('passport');
 
 const router = express.Router();
+
+router.use('/', passport.authenticate('jwt', { session: false, failWithError: true }));
 
 /* ========== GET/READ ALL ITEMS ========== */
 router.get('/', (req, res, next) => {
@@ -122,13 +125,11 @@ router.put('/:id', (req, res, next) => {
     err.status = 400;
     return next(err);
   }
-  if (tags && !tags.every(tag => mongoose.Types.ObjectId.isValid(tag))){
-  
+  if (tags && tags.some(tag => !mongoose.Types.ObjectId.isValid(tag))){
     const err = new Error(`The tags '${tags}' is not valid`);
     err.status = 400;
     return next(err);
   }
-
 
   const updateNote = { title, content, folderId,tags };
 

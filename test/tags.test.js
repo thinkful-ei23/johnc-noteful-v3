@@ -259,8 +259,4 @@ describe('Tag endpoints', function(){
             })
         })
     })
-
-
-
-    
 })
