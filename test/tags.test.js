@@ -3,11 +3,14 @@ const chaiHttp = require('chai-http');
 const mongoose = require('mongoose');
 
 const app = require('../server');
-const { TEST_MONGODB_URI } = require('../config');
+const { TEST_MONGODB_URI,JWT_SECRET } = require('../config');
 
 const Tag = require('../models/tags');
+const User = require('../models/user')
 
 const seedTags = require('../db/seed/tags');
+const seedUsers = require('../db/seed/users');
+const jwt = require('jsonwebtoken')
 
 const expect = chai.expect;
 chai.use(chaiHttp);
@@ -18,12 +21,19 @@ describe('Tag endpoints', function(){
         return mongoose.connect(TEST_MONGODB_URI)
         .then(() => mongoose.connection.db.dropDatabase());
     });
-    
+    let token;
+    let user;
+
     beforeEach(function () {
         return Promise.all([
+            User.insertMany(seedUsers),
             Tag.insertMany(seedTags),
             Tag.createIndexes()
-        ]);
+        ])        
+        .then(([users]) => {
+            user = users[0];
+            token = jwt.sign({ user }, JWT_SECRET, { subject: user.username });
+        });
     });
     
     afterEach(function () {
@@ -39,13 +49,14 @@ describe('Tag endpoints', function(){
         it('should return all tags',function(){
             return chai.request(app)
             .get('/api/tags')
+            .set('Authorization', `Bearer ${token}`)
             .then(_res =>{
                 res = _res
                 expect(res).to.be.json
                 expect(res.body).to.be.a('array')
                 expect(res).to.have.status(200)
                 expect(res.body).to.have.lengthOf.at.least(1);
-                return Tag.find().count()
+                return Tag.find({userId: user.id}).count()
             })
             .then(result =>{
                 expect(result).to.be.equal(res.body.length)
@@ -54,6 +65,7 @@ describe('Tag endpoints', function(){
         it('should return 404 for a bad path',function(){
             return chai.request(app)
             .get('/api/tagssfg')
+            .set('Authorization', `Bearer ${token}`)
             .then(res =>{
                 expect(res).to.have.status(404)
             })
@@ -71,6 +83,7 @@ describe('Tag endpoints', function(){
 
                     return chai.request(app)
                     .get(`/api/tags/${data.id}`)
+                    .set('Authorization', `Bearer ${token}`)
                 })
             .then(res=>{
                 expect(res).to.be.json
@@ -81,7 +94,9 @@ describe('Tag endpoints', function(){
         });
         it('should return invalid id when id is not valid',function(){
 
-            return chai.request(app).get('/api/tags/RandoId')
+            return chai.request(app)
+            .get('/api/tags/RandoId')
+            .set('Authorization', `Bearer ${token}`)
             .then(res =>{
                 expect(res).to.have.status(404)
                 expect(res.body.message).to.equal('The `id` is not valid')
@@ -89,7 +104,9 @@ describe('Tag endpoints', function(){
         });
         it('should return 404 when it has a bad path',function(){
 
-            return chai.request(app).get('/api/tags12345')
+            return chai.request(app)
+            .get('/api/tags12345')
+            .set('Authorization', `Bearer ${token}`)
             .then( res=>{
                 expect(res).to.have.status(404)
             })
@@ -100,7 +117,11 @@ describe('Tag endpoints', function(){
         it('should post a new tag',function(){
             const newItem ={name: 'Super Awesome Name'}
 
-            return chai.request(app).post('/api/tags').send(newItem)
+            return chai.request(app)
+            .post('/api/tags')
+            .set('Authorization', `Bearer ${token}`)
+            .send(newItem)
+            
             .then(res =>{
                 expect(res).to.be.json
                 expect(res.body).to.be.a('object')
@@ -115,7 +136,10 @@ describe('Tag endpoints', function(){
         it('should return Missing `name` in request body',function(){
             const badItem = {name:null}
 
-            return chai.request(app).post('/api/tags').send(badItem)
+            return chai.request(app)
+            .post('/api/tags')
+            .set('Authorization', `Bearer ${token}`)
+            .send(badItem)
             .then(res =>{
                 expect(res).to.have.status(400)
                 expect(res.body.message).to.equal('Missing `name` in request body')
@@ -127,7 +151,9 @@ describe('Tag endpoints', function(){
                     const badItem = {name: data.name}
 
                     return chai.request(app)
-                    .post('/api/tags').send(badItem)
+                    .post('/api/tags')
+                    .set('Authorization', `Bearer ${token}`)
+                    .send(badItem)
                 })
                 .then(res =>{
                     expect(res).to.have.status(400)
@@ -136,7 +162,10 @@ describe('Tag endpoints', function(){
         })
         it('should return 404 for a bad path',function(){
             const newItem ={name: 'Super Awesome Name'}
-            return chai.request(app).post('/api/taggs').send(newItem)
+            return chai.request(app)
+            .post('/api/taggs')
+            .set('Authorization', `Bearer ${token}`)
+            .send(newItem)
             .then(res =>{
                 expect(res).to.have.status(404)
             })
@@ -154,6 +183,7 @@ describe('Tag endpoints', function(){
 
                     return chai.request(app)
                     .put(`/api/tags/${data.id}`)
+                    .set('Authorization', `Bearer ${token}`)
                     .send(updatedItem)
                     .then(res =>{
                         expect(res).to.be.json
@@ -177,6 +207,7 @@ describe('Tag endpoints', function(){
 
                     return chai.request(app)
                     .put(`/api/tags/${data.id}2`)
+                    .set('Authorization', `Bearer ${token}`)
                     .send(updatedItem)
                 })
                 .then(res=>{
@@ -195,6 +226,7 @@ describe('Tag endpoints', function(){
 
                     return chai.request(app)
                     .put(`/api/tags/${data.id}`)
+                    .set('Authorization', `Bearer ${token}`)
                     .send(badItem)
                 })
                 .then(res =>{
@@ -208,7 +240,9 @@ describe('Tag endpoints', function(){
                 const [item1, item2] = data
                 item1.name = item2.name
                 return chai.request(app)
-                .put(`/api/tags/${item1.id}`).send(item1)
+                .put(`/api/tags/${item1.id}`)
+                .set('Authorization', `Bearer ${token}`)
+                .send(item1)
             })
             .then(res =>{
                 expect(res).to.have.status(400)
@@ -225,6 +259,7 @@ describe('Tag endpoints', function(){
 
                     return chai.request(app)
                     .put(`/api/tags${data.id}`)
+                    .set('Authorization', `Bearer ${token}`)
                     .send(updatedItem)
                 })
                 .then(res=>{
@@ -240,7 +275,9 @@ describe('Tag endpoints', function(){
                 .then(_data => {
                     data = _data;
 
-            return chai.request(app).delete(`/api/tags/${data.id}`)
+            return chai.request(app)
+            .delete(`/api/tags/${data.id}`)
+            .set('Authorization', `Bearer ${token}`)
                 })
             .then(res =>{
                 expect(res).to.have.status(204)
@@ -252,7 +289,9 @@ describe('Tag endpoints', function(){
         })
         it('should return The `id` is not valid',function(){
             
-            return chai.request(app).delete('/api/tags/RANDOID')
+            return chai.request(app)
+            .delete('/api/tags/RANDOID')
+            .set('Authorization', `Bearer ${token}`)
             .then(res =>{
                 expect(res).to.have.status(404)
                 expect(res.body.message).to.equal('The `id` is not valid')

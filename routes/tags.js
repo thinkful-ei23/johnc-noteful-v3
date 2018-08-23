@@ -9,9 +9,13 @@ const passport =require('passport');
 
 const router = express.Router();
 
+router.use('/', passport.authenticate('jwt', { session: false, failWithError: true }));
 
 router.get('/', (req,res,next)=>{
-    Tag.find()
+    const userId = req.user.id;
+    
+
+    Tag.find({userId})
     .then(results=>{
         res.json(results)
     })
@@ -21,7 +25,8 @@ router.get('/', (req,res,next)=>{
 });
 
 router.get('/:id',(req,res,next)=>{
-    const {id} = req.params
+    const {id} = req.params;
+    const userId = req.user.id
 
     if(!mongoose.Types.ObjectId.isValid(id)){
         const err = new Error('The `id` is not valid');
@@ -30,7 +35,7 @@ router.get('/:id',(req,res,next)=>{
     }
 
 
-    Tag.findById(id)
+    Tag.findOne({_id: id, userId})
     .then(result=>{
         res.json(result)
     })
@@ -41,8 +46,9 @@ router.get('/:id',(req,res,next)=>{
 
 router.post('/',(req,res,next)=>{
     const {name} = req.body
+    const userId = req.user.id;
 
-    const newItem ={name}
+    const newItem ={name, userId}
 
     if (!name) {
         const err = new Error('Missing `name` in request body');
@@ -68,6 +74,7 @@ router.post('/',(req,res,next)=>{
 router.put('/:id',(req,res,next)=>{
     const {id} = req.params
     const {name} = req.body
+    const userId = req.user.id;
 
     const updateObj = {name}
     console.log(updateObj)
@@ -84,7 +91,7 @@ router.put('/:id',(req,res,next)=>{
         return next(err);
     }
 
-    Tag.findByIdAndUpdate(id, updateObj, {new:true})
+    Tag.findOneAndUpdate({_id:id,userId}, updateObj, {new:true})
     .then(result=>{
         res.json(result)
     })
@@ -98,7 +105,8 @@ router.put('/:id',(req,res,next)=>{
 });
 
 router.delete('/:id',(req,res,next)=>{
-    const {id} = req.params
+    const {id} = req.params;
+    const userId = req.user.id;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
         const err = new Error('The `id` is not valid');
@@ -106,7 +114,7 @@ router.delete('/:id',(req,res,next)=>{
         return next(err);
     }
 
-    const tagRemove = Tag.findByIdAndRemove(id)
+    const tagRemove = Tag.findOneAndRemove({_id:id,userId})
     const removeNoteTag = Note.updateMany({$pull:{tags: id}})
 
     return Promise.all([tagRemove,removeNoteTag])

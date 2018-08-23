@@ -4,8 +4,9 @@ const bcrypt = require('bcryptjs')
 const userSchema = new mongoose.Schema({
     fullname:{type: String},
     username:{type: String, required:true, unique:true},
-    passwordHistory:[{type:String}],
+    // passwordHistory:[{type:String}],
     password:{type: String, required:true}
+    
 });
 
 userSchema.set('toObject', {
@@ -17,14 +18,14 @@ userSchema.set('toObject', {
     }
 });
 
-userSchema.methods.validatePasswordHistory = function(password){
-    console.log(password)
-    const allPasswordHistory = [...this.passwordHistory,this.password]
-    return Promise.all(allPasswordHistory.map(oldPassword=> bcrypt.compare(password,oldPassword)))
-    .then(results => results.every(isMatch => !isMatch))
-    // return this.passwordHistory.every(oldPassword=>
-    // !bcrypt.compare(password,oldPassword ))
-}
+// userSchema.methods.validatePasswordHistory = function(password){
+//     console.log(password)
+//     const allPasswordHistory = [...this.passwordHistory,this.password]
+//     return Promise.all(allPasswordHistory.map(oldPassword=> bcrypt.compare(password,oldPassword)))
+//     .then(results => results.every(isMatch => !isMatch))
+//     // return this.passwordHistory.every(oldPassword=>
+//     // !bcrypt.compare(password,oldPassword ))
+// }
 
 userSchema.methods.validatePassword = function(password){
     return bcrypt.compare(password, this.password)

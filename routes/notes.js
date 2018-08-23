@@ -4,17 +4,68 @@ const express = require('express');
 const mongoose = require('mongoose');
 
 const Note = require('../models/note');
+const Folder = require('../models/folder');
+const Tag = require('../models/tags');
 const passport = require('passport');
 
 const router = express.Router();
 
 router.use('/', passport.authenticate('jwt', { session: false, failWithError: true }));
 
+function validateFolderId(folderId, userId) {
+  if (folderId === undefined) {
+    return Promise.resolve();
+  }
+
+  if (!mongoose.Types.ObjectId.isValid(folderId)) {
+    const err = new Error('The `folderId` is not valid');
+    err.status = 400;
+    return Promise.reject(err);
+  }
+
+  return Folder.findOne({ _id: folderId, userId })
+    .then(result => {
+      if (result.userId != userId) {
+        const err = new Error('The `folderId` is not valid');
+        err.status = 400;
+        return Promise.reject(err);
+      }
+    });
+}
+
+function validateTagIds(tags, userId) {
+  if (tags === undefined) {
+    return Promise.resolve();
+  }
+
+  if (!Array.isArray(tags)) {
+    const err = new Error('The `tags` property must be an array');
+    err.status = 400;
+    return Promise.reject(err);
+  }
+
+  if (tags && !tags.every(tag => mongoose.Types.ObjectId.isValid(tag))){
+    const err = new Error(`The 'tag' is not valid`);
+    err.status = 400;
+    return Promise.reject(err);
+  }
+
+  return Tag.find({ $and: [{ _id: { $in: tags }, userId }] })
+    .then(results => {
+      if (tags.length !== results.length) {
+        const err = new Error('The `tags` array contains an invalid `id`');
+        err.status = 400;
+        return Promise.reject(err);
+      }
+    });
+}
+
 /* ========== GET/READ ALL ITEMS ========== */
 router.get('/', (req, res, next) => {
   const { searchTerm, folderId,tagId } = req.query;
+  const userId = req.user.id
 
-  let filter = {};
+  let filter = {userId};
 
   if (searchTerm) {
     
@@ -44,6 +95,7 @@ router.get('/', (req, res, next) => {
 /* ========== GET/READ A SINGLE ITEM ========== */
 router.get('/:id', (req, res, next) => {
   const { id } = req.params;
+  const userId = req.user.id
 
   if (!mongoose.Types.ObjectId.isValid(id)) {
     const err = new Error('The `id` is not valid');
@@ -51,7 +103,7 @@ router.get('/:id', (req, res, next) => {
     return next(err);
   }
 
-  Note.findById(id)
+  Note.findOne({_id:id,userId})
   .populate('tags')
     .then(result => {
       if (result) {
@@ -65,9 +117,13 @@ router.get('/:id', (req, res, next) => {
     });
 });
 
+
+
+
 /* ========== POST/CREATE AN ITEM ========== */
 router.post('/', (req, res, next) => {
   const { title, content, folderId, tags } = req.body;
+  const userId = req.user.id;
 
   /***** Never trust users - validate input *****/
   if (!title) {
@@ -76,79 +132,84 @@ router.post('/', (req, res, next) => {
     return next(err);
   }
 
-  if (folderId && !mongoose.Types.ObjectId.isValid(folderId)) {
-    const err = new Error('The `folderId` is not valid');
-    err.status = 400;
-    return next(err);
+
+
+  const newNote = { title, content, folderId,tags,userId };
+
+  if (newNote.folderId === '') {
+    delete newNote.folderId;
   }
 
-  if (tags && !tags.every(tag => mongoose.Types.ObjectId.isValid(tag))){
-  
-    const err = new Error(`The tags '${tags}' is not valid`);
-    err.status = 400;
-    return next(err);
-  }
-
-  const newNote = { title, content, folderId,tags };
-
-  Note.create(newNote)
+return Promise.all([
+  validateFolderId(newNote.folderId,userId), 
+  validateTagIds(newNote.tags,userId)])
+.then(() =>Note.create(newNote))
     .then(result => {
       res.location(`${req.originalUrl}/${result.id}`)
-        .status(201)
-        .json(result);
+      .status(201)
+      .json(result);
     })
     .catch(err => {
       next(err);
     });
-});
+})
+
 
 /* ========== PUT/UPDATE A SINGLE ITEM ========== */
 router.put('/:id', (req, res, next) => {
   const { id } = req.params;
-  const { title, content, folderId,tags } = req.body;
+  const userId = req.user.id
+  
+  const updatedablefeilds = ['title', 'content', 'folderId', 'tags'];
+  const updateNote = { };
+
+updatedablefeilds.forEach(field =>{
+  if(field in req.body){
+    updateNote[field] = req.body[field]
+  }
+})
 
   /***** Never trust users - validate input *****/
+
+
+
   if (!mongoose.Types.ObjectId.isValid(id)) {
     const err = new Error('The `id` is not valid');
     err.status = 400;
     return next(err);
   }
-
-  if (!title) {
+  
+  if (updateNote.title === '') {
     const err = new Error('Missing `title` in request body');
     err.status = 400;
     return next(err);
   }
 
-  if (folderId && !mongoose.Types.ObjectId.isValid(folderId)) {
-    const err = new Error('The `folderId` is not valid');
-    err.status = 400;
-    return next(err);
-  }
-  if (tags && tags.some(tag => !mongoose.Types.ObjectId.isValid(tag))){
-    const err = new Error(`The tags '${tags}' is not valid`);
-    err.status = 400;
-    return next(err);
+  if (updateNote.folderId === '') {
+    delete updateNote.folderId;
+    updateNote.$unset = {folderId : 1};
   }
 
-  const updateNote = { title, content, folderId,tags };
-
-  Note.findByIdAndUpdate(id, updateNote, { new: true })
-    .then(result => {
-      if (result) {
-        res.json(result);
-      } else {
-        next();
-      }
-    })
-    .catch(err => {
-      next(err);
-    });
+return Promise.all([
+  validateFolderId(updateNote.folderId,userId),
+  validateTagIds(updateNote.tags,userId)])
+.then(()=> Note.findOneAndUpdate({_id:id,userId}, updateNote, { new: true }))
+  .then(result => {
+    if (result) {
+      res.json(result);
+    } else {
+      next();
+    }
+  })
+  .catch(err => {
+    next(err);
+  });
 });
 
 /* ========== DELETE/REMOVE A SINGLE ITEM ========== */
 router.delete('/:id', (req, res, next) => {
   const { id } = req.params;
+  const userId = req.user.id;
 
   /***** Never trust users - validate input *****/
   if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -157,7 +218,7 @@ router.delete('/:id', (req, res, next) => {
     return next(err);
   }
 
-  Note.findByIdAndRemove(id)
+  Note.findOneAndRemove({_id:id,userId})
     .then(() => {
       res.status(204).end();
     })

@@ -9,7 +9,8 @@ const router = express.Router();
 
 
 router.post('/users', (req,res,next)=>{
-    const {fullname= '',username, password} = req.body;
+    let {fullname= '',username, password} = req.body;
+    
 
     const requiredFields = ['username', 'password'];
     const missingField = requiredFields.find(field => !(field in req.body));
@@ -81,6 +82,7 @@ router.post('/users', (req,res,next)=>{
         });
     }
     
+    fullname = fullname.trim();
 
     return User.find({username})
     .count()
@@ -114,41 +116,41 @@ router.post('/users', (req,res,next)=>{
     });
 });
 
-router.put('/users/:id',(req,res,next)=>{
-    const _id = req.params.id
-    const {fullname,username,password} = req.body
-    let updateUser;
-    return User.findById(_id).exec()
-    .then(user =>{
-        updateUser = user
-        console.log(user)
-        updateUser.fullname = fullname || updateUser.fullname
-        updateUser.username = username || updateUser.username
-        if(password){
-            return updateUser.validatePasswordHistory(password)
-            .then(isValid=>{  
-                console.log(isValid)
-                if (!isValid){
-                    throw new Error('oops')
-                }
-                updateUser.passwordHistory = updateUser.passwordHistory || []
-                updateUser.passwordHistory=[...updateUser.passwordHistory,updateUser.password]
-                return User.hashPassword(password)
-                .then(hashedPassword =>{
-                    updateUser.password = hashedPassword
-                    return user.save()
-                })})
-            }
-        return user.save()
-    })
-    .then(result=>{
-        console.log(result)
-        res.json(result)
-    })
-    .catch(err =>{
-        next(err)
-    })
-})
+// router.put('/users/:id',(req,res,next)=>{
+//     const _id = req.params.id
+//     const {fullname,username,password} = req.body
+//     let updateUser;
+//     return User.findById(_id).exec()
+//     .then(user =>{
+//         updateUser = user
+//         console.log(user)
+//         updateUser.fullname = fullname || updateUser.fullname
+//         updateUser.username = username || updateUser.username
+//         if(password){
+//             return updateUser.validatePasswordHistory(password)
+//             .then(isValid=>{  
+//                 console.log(isValid)
+//                 if (!isValid){
+//                     throw new Error('oops')
+//                 }
+//                 updateUser.passwordHistory = updateUser.passwordHistory || []
+//                 updateUser.passwordHistory=[...updateUser.passwordHistory,updateUser.password]
+//                 return User.hashPassword(password)
+//                 .then(hashedPassword =>{
+//                     updateUser.password = hashedPassword
+//                     return user.save()
+//                 })})
+//             }
+//         return user.save()
+//     })
+//     .then(result=>{
+//         console.log(result)
+//         res.json(result)
+//     })
+//     .catch(err =>{
+//         next(err)
+//     })
+// })
 
 
 module.exports = router;

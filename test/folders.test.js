@@ -3,11 +3,14 @@ const chaiHttp = require('chai-http');
 const mongoose = require('mongoose');
 
 const app = require('../server');
-const { TEST_MONGODB_URI } = require('../config');
+const { TEST_MONGODB_URI,JWT_SECRET } = require('../config');
 
 const Folder = require('../models/folder');
+const User = require('../models/user')
 
 const seedFolders = require('../db/seed/folders');
+const seedUsers = require('../db/seed/users');
+const jwt = require('jsonwebtoken')
 
 const expect = chai.expect;
 chai.use(chaiHttp);
@@ -19,11 +22,19 @@ describe('noteful folder method tests', function(){
         .then(() => mongoose.connection.db.dropDatabase());
     });
     
+    let token;
+    let user;
+
     beforeEach(function () {
         return Promise.all([
+            User.insertMany(seedUsers),
             Folder.insertMany(seedFolders),
             Folder.createIndexes()
-        ]);
+        ])
+        .then(([users]) => {
+            user = users[0];
+            token = jwt.sign({ user }, JWT_SECRET, { subject: user.username });
+        });
     });
     
     afterEach(function () {
@@ -41,13 +52,14 @@ describe('noteful folder method tests', function(){
             let res;
             return chai.request(app)
                 .get('/api/folders')
+                .set('Authorization', `Bearer ${token}`)
                 .then(_res =>{
                     res = _res
                     expect(res).to.be.json;
                     expect(res).to.have.status(200);
                     expect(res.body).to.be.a('array');
                     expect(res.body).to.have.lengthOf.at.least(1);
-                return Folder.find().count()
+                return Folder.find({userId:user.id}).count()
                 })
             .then(folders =>{
                 expect(res.body.length).to.be.equal(folders)
@@ -70,11 +82,13 @@ describe('noteful folder method tests', function(){
                 .then(_data => {
                     data = _data;
 
-            return chai.request(app).get(`/api/folders/${data.id}`)
+            return chai.request(app)
+            .get(`/api/folders/${data.id}`)
+            .set('Authorization', `Bearer ${token}`)
                 })
             .then(res =>{
                 expect(res).to.be.json
-                expect(res.body).to.be.a('object')
+                expect(res.body).to.be.an('object')
                 expect(res).to.have.status(200)
 
                 expect(res.body.name).to.equal(data.name)
@@ -87,7 +101,9 @@ describe('noteful folder method tests', function(){
                 .then(_data =>{
                     data = _data;
 
-                    return chai.request(app).get(`/api/folders${data.id}`)
+                    return chai.request(app)
+                    .get(`/api/folders${data.id}`)
+                    .set('Authorization', `Bearer ${token}`)
                 })
                 .then(res =>{
                     expect(res).to.have.status(404)
@@ -102,6 +118,7 @@ describe('noteful folder method tests', function(){
 
             return chai.request(app)
             .post('/api/folders')
+            .set('Authorization', `Bearer ${token}`)
             .send(newItem)
             .then(res =>{
                 expect(res).to.be.json;
@@ -118,6 +135,7 @@ describe('noteful folder method tests', function(){
             const newItem2 = {name:null}
             return chai.request(app)
                 .post('/api/folders')
+                .set('Authorization', `Bearer ${token}`)
                 .send(newItem2)
                 .then(res =>{
                     expect(res).to.have.status(400)
@@ -134,7 +152,9 @@ describe('noteful folder method tests', function(){
             return Folder.findOne()
                 .then(_data => {
                     data = _data;
-                return chai.request(app).put(`/api/folders/${data.id}`)
+                return chai.request(app)
+                .put(`/api/folders/${data.id}`)
+                .set('Authorization', `Bearer ${token}`)
                 .send(updateItem)
                 })
                 .then(res =>{
@@ -155,7 +175,9 @@ describe('noteful folder method tests', function(){
             return Folder.findOne()
                 .then(_data => {
                     data = _data;
-                return chai.request(app).put(`/api/folders/${data.id}`)
+                return chai.request(app)
+                .put(`/api/folders/${data.id}`)
+                .set('Authorization', `Bearer ${token}`)
                 .send(UpdateItem2)
                 })
                 .then(res =>{
@@ -171,7 +193,9 @@ describe('noteful folder method tests', function(){
                 .then(_data => {
                     data = _data;
 
-            return chai.request(app).delete(`/api/folders/${data.id}`)
+            return chai.request(app)
+            .delete(`/api/folders/${data.id}`)
+            .set('Authorization', `Bearer ${token}`)
                 })
             .then(res =>{
                 expect(res).to.have.status(204)
@@ -187,7 +211,9 @@ describe('noteful folder method tests', function(){
                 .then(_data => {
                     data = _data;
 
-            return chai.request(app).delete(`/api/folders${data.id}`)
+            return chai.request(app)
+            .delete(`/api/folders${data.id}`)
+            .set('Authorization', `Bearer ${token}`)
                 })
             .then(res=>{
                 expect(res).to.have.status(404)
