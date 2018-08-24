@@ -70,6 +70,13 @@ describe('Tag endpoints', function(){
                 expect(res).to.have.status(404)
             })
         });
+        it('should return 401 for no jwt',function(){
+            return chai.request(app)
+            .get('/api/tags')
+            .then(res=>{
+                expect(res).to.have.status(401)
+            })
+        })
     });
 
 

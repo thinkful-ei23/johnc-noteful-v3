@@ -72,6 +72,13 @@ describe('noteful folder method tests', function(){
                     expect(res).to.have.status(404);
                 })
         })
+        it('should return 401 for no jwt',function(){
+            return chai.request(app)
+            .get('/api/folders')
+            .then(res=>{
+                expect(res).to.have.status(401)
+            })
+        })
     });
 
     describe('GET /api/folders/:id', function(){
@@ -94,7 +101,7 @@ describe('noteful folder method tests', function(){
                 expect(res.body.name).to.equal(data.name)
             })
         })
-        it('should not return a folder',function(){
+        it('should return a 404 bad path for the folder',function(){
 
             let data;
             return Folder.findOne()
@@ -109,6 +116,16 @@ describe('noteful folder method tests', function(){
                     expect(res).to.have.status(404)
                     expect(res.body).to.not.equal(data)
                 })
+        });
+
+        it('should return not a valid Id',function(){
+            return chai.request(app)
+            .get('/api/folders/RandoId')
+            .set('Authorization', `Bearer ${token}`)
+            .then((res)=>{
+                expect(res).to.have.status(400)
+                expect(res.body.message).to.equal('The `id` is not valid')
+            })
         })
     });
 
@@ -130,7 +147,7 @@ describe('noteful folder method tests', function(){
                 expect(data.name).to.be.equal(newItem.name)
             })
         })
-        it('should not create a new folder',function(){
+        it('should return Missing `name` in request body',function(){
 
             const newItem2 = {name:null}
             return chai.request(app)
@@ -139,6 +156,22 @@ describe('noteful folder method tests', function(){
                 .send(newItem2)
                 .then(res =>{
                     expect(res).to.have.status(400)
+                    expect(res.body.message).to.be.equal('Missing `name` in request body')
+                })
+        })
+        it('should return Folder name already exists',function(){
+            return Folder.findOne()
+                .then(data => {
+                    const badItem = {name: data.name}
+
+                    return chai.request(app)
+                    .post('/api/folders')
+                    .set('Authorization', `Bearer ${token}`)
+                    .send(badItem)
+                })
+                .then(res =>{
+                    expect(res).to.have.status(400)
+                    expect(res.body.message).to.equal('Folder name already exists')
                 })
         })
     });
@@ -168,7 +201,7 @@ describe('noteful folder method tests', function(){
                     expect(result.name).to.be.equal(updateItem.name)
                 })
         })
-        it('should not update the folder',function(){
+        it('should return Missing `name` in request body',function(){
             const UpdateItem2 = {name:null}
 
             let data;
@@ -182,7 +215,34 @@ describe('noteful folder method tests', function(){
                 })
                 .then(res =>{
                     expect(res).to.have.status(400)
+                    expect(res.body.message).to.equal('Missing `name` in request body')
                 })
+        });
+        it('should return Folder name already exists',function(){
+            return Folder.find().limit(2)
+            .then(data => {
+                const [item1, item2] = data
+                item1.name = item2.name
+                return chai.request(app)
+                .put(`/api/folders/${item1.id}`)
+                .set('Authorization', `Bearer ${token}`)
+                .send(item1)
+            })
+            .then(res =>{
+                expect(res).to.have.status(400)
+                expect(res.body.message).to.equal('Folder name already exists')
+            })
+        });
+    })
+    it('should return The `id` is not valid',function(){
+        const updateItem ={name: "newname"}
+        return chai.request(app)
+        .put(`/api/folders/RandomId`)
+        .set('Authorization', `Bearer ${token}`)
+        .send(updateItem)
+        .then(res=>{
+            expect(res).to.have.status(400)
+            expect(res.body.message).to.equal('The `id` is not valid')
         })
     })
 
@@ -203,6 +263,15 @@ describe('noteful folder method tests', function(){
             })
             .then(dbFolder =>{
                 expect(dbFolder).to.be.null
+            })
+        })
+        it('should return The `id` is not valid',function(){
+            return chai.request(app)
+            .delete('/api/folders/RandomId')
+            .set('Authorization',`Bearer ${token}`)
+            .then(res =>{
+                expect(res).to.have.status(400)
+                expect(res.body.message).to.equal('The `id` is not valid')
             })
         })
         it('should not delete a Folder',function(){

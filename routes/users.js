@@ -98,7 +98,6 @@ router.post('/users', (req,res,next)=>{
         return User.hashPassword(password)
     })
     .then((digest)=>{
-        console.log(digest)
         return User.create({
             fullname,
             username,
